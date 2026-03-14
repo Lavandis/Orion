@@ -38,6 +38,7 @@ logs/
 .neoconf.json
 
 # 资产与输出文件 (Assets)
+assets/*
 assets/models/*.pth
 assets/plots/*.png
 assets/plots/*.pdf
