@@ -1,0 +1,40 @@
+# ==========================================
+# PANORAMA 混合建模全局配置文件
+# ==========================================
+
+system:
+  fps: 90                     # 摄像头采样帧率 (后续代码通过 1/fps 计算 dt)
+  device: "cuda"              # 默认运行设备 ("cuda" 或 "cpu")
+  seed: 42                    # 全局随机种子，确保实验完全可复现
+
+data:
+  raw_path: "data/raw/data.csv"
+  processed_path: "data/processed/data.csv"
+  train_split: 16200          # 训练集截断点 (用于划分 Train/Val)
+  test_start: 16200           # 评估阶段测试集起点
+  pred_len: 5400              # 测试集向前预测的长度 (60秒 * 90帧)
+
+physics:
+  g_L: 16.3333                # 等效重力参数 (g / L)
+  k1: 0.000098                # 线性机械阻尼系数
+  k2: 0.000009                # 非线性流体力学阻力系数
+
+model:
+  hidden_dim: 128             # 神经网络隐藏层维度 (Optuna 搜索最优值)
+  input_scale: [10.0, 1.0]    # 输入特征信号放大器 [theta_scale, omega_scale]
+
+train:
+  batch_size: 512             # 批次大小
+  epochs: 50                  # 总训练轮次
+  lr: 0.000161334             # 初始学习率 (Optuna 搜索最优值)
+  weight_decay: 0.000006886   # 权重衰减惩罚
+  seq_len: 90                 # 时序截取窗口长度 (强制网络学习长时序规律)
+
+multiplier_method:
+  lambda_init: 1000.0         # 动态乘子法初始惩罚系数
+  tau: 50000.0                # 惩罚力度自适应升级步长
+  warmup_epochs: 15           # 热身期轮数 (强制屏蔽 Fa，让物理基线先拟合)
+
+paths:
+  model_save: "assets/models/panorama_model.pth"
+  plot_save: "assets/plots/panorama_test_result.png"
