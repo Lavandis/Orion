@@ -45,3 +45,5 @@ assets/plots/*.pdf
 # 保留空目录结构
 !assets/models/.gitkeep
 !assets/plots/.gitkeep
+
+/log.md

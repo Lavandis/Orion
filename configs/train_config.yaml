@@ -7,6 +7,13 @@ system:
   device: "cuda"              # 默认运行设备 ("cuda" 或 "cpu")
   seed: 42                    # 全局随机种子，确保实验完全可复现
 
+camera:
+  pivot_x: 640.0   # 悬挂点的 X 像素坐标 (请根据实际视频修改)
+  pivot_y: -988.0    # 悬挂点的 Y 像素坐标 (请根据实际视频修改)
+  use_filter: False
+  smooth_window: 11 # Savitzky-Golay 滤波器的窗口大小 (平滑 YOLO 的抖动)
+  smooth_poly: 3    # 滤波器的多项式阶数
+
 data:
   raw_path: "data/raw/data.csv"
   processed_path: "data/processed/data.csv"
