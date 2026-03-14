@@ -1,0 +1,47 @@
+# =========================
+# PANORAMA .gitignore
+# =========================
+
+# Python 缓存文件 (运行时自动生成，不用提交)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 虚拟环境 (如果你用了 venv 或 conda)
+venv/
+env/
+.env
+
+# 数据文件 (绝对不能把海量实验数据提交到 Git)
+*.csv
+data/raw/*
+data/processed/*
+# (保留空目录结构，不保留里面的文件)
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# 模型权重与检查点 (体积太大，且每次训练都在变)
+checkpoints/
+*.pth
+*.pt
+
+# 运行日志与生成的图表
+logs/
+*.png
+*.jpg
+*.log
+
+# 操作系统与 IDE 缓存
+.DS_Store
+.vscode/
+.idea/
+.neoconf.json
+
+# 资产与输出文件 (Assets)
+assets/models/*.pth
+assets/plots/*.png
+assets/plots/*.pdf
+
+# 保留空目录结构
+!assets/models/.gitkeep
+!assets/plots/.gitkeep
