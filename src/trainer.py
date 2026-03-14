@@ -53,8 +53,8 @@ def train_panorama(model: nn.Module,
             
             # 3. 核心大招：动态拉格朗日 Loss 组合
             # 公式: L = ||Fa||^2 + lambda * MSE
-            loss = fa_weight * fa_norm + lambda_val * mse_loss
-            
+            #loss = fa_weight * fa_norm + lambda_val * mse_loss
+            loss = mse_loss
             # 4. 反向传播与参数更新
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0) # 梯度裁剪，防止爆炸

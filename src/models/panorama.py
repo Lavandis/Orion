@@ -55,7 +55,7 @@ class PANORAMA(nn.Module):
         for _ in range(steps):
             # 记录当前时刻 AI 的“干预力度” (取绝对值的均值)
             aug_force = self.augmentation(curr_state)
-            fa_penalties.append(torch.abs(aug_force).mean())
+            fa_penalties.append(torch.abs(aug_force**2).mean())
             
             # 调用底层工具库里的 RK4 积分器，推演到下一帧
             # 注意：我们将 self.dynamics 这个黑盒函数整体传给了 rk4_step

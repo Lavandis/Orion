@@ -95,10 +95,10 @@ def main():
     
     improvement = (rmse_phys - rmse_pano) / rmse_phys * 100
     
-    print(f"\n🏆 评估结果 (RMSE 指标):")
-    print(f"   📉 纯物理理论盲猜 | RMSE: {rmse_phys:.6f} rad")
-    print(f"   📈 PANORAMA 预测 | RMSE: {rmse_pano:.6f} rad")
-    print(f"   ✨ 算法性能提升率 | +{improvement:.2f}%")
+    print(f"\n  评估结果 (RMSE 指标):")
+    print(f"    纯物理理论盲猜 | RMSE: {rmse_phys:.6f} rad")
+    print(f"    PANORAMA 预测 | RMSE: {rmse_pano:.6f} rad")
+    print(f"    算法性能提升率 | +{improvement:.2f}%")
     
     # ================= 7. 数据可视化与出图 =================
     print("🎨 正在生成对比曲线图...")
@@ -125,7 +125,7 @@ def main():
     print(f"✅ 绝美的高清对比图已成功保存至: {os.path.abspath(plot_save_path)}")
     
     # 如果是在有图形界面的系统里，可以取消注释下面这行直接弹窗看图
-    # plt.show()
+    plt.show()
 
 if __name__ == "__main__":
     main()
