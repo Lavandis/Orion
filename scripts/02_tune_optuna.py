@@ -29,7 +29,9 @@ def objective(trial, config):
     device = torch.device(config['system']['device'])
     fps = config['system']['fps']
     dt = 1.0 / fps
-    g_L = config['physics']['g_L']
+    g = config['physics']['g']
+    m = config['physics']['m']
+    L = config['physics']['L']
     k1 = config['physics']['k1']
     k2 = config['physics']['k2']
     input_scale = config['model']['input_scale']
@@ -53,7 +55,10 @@ def objective(trial, config):
     val_loader = DataLoader(ODEDataset(val_df, seq_len, dt), batch_size=batch_size, shuffle=False)
     
     # 3. 初始化模型引擎
-    model = PANORAMA(dt, g_L, k1, k2, hidden_dim, input_scale).to(device)
+    model = PANORAMA(
+        dt=dt, g=g, m=m, L=L, k1=k1, k2=k2, 
+        hidden_dim=hidden_dim, input_scale=input_scale
+    ).to(device)
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     
     # 4. 简化的训练循环 (关闭复杂的乘子法，只看基础拟合潜力)

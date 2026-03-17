@@ -62,7 +62,9 @@ def main():
     print("🧠 正在构建 PANORAMA 混合推理引擎...")
     model = PANORAMA(
         dt=dt,
-        g_L=config['physics']['g_L'],
+        g=config['physics']['g'],
+        m=config['physics']['m'],
+        L=config['physics']['L'],      
         k1=config['physics']['k1'],
         k2=config['physics']['k2'],
         hidden_dim=config['model']['hidden_dim'],

@@ -46,9 +46,10 @@ def main():
     print(f"📊 计划预测步数: {pred_len}, 实际可用 Ground Truth 步数: {actual_len}")
 
     # 计算测试集起点的初始状态 [theta_0, omega_0]
+    omega_array = np.gradient(data, dt)
+    
     theta_0 = data[start_idx]
-    prev_theta = data[start_idx - 1]
-    omega_0 = (theta_0 - prev_theta) / dt # 用向后差分估算初始角速度
+    omega_0 = omega_array[start_idx]
     
     init_state = torch.tensor([[theta_0, omega_0]], dtype=torch.float32).to(device)
     true_future = data[start_idx + 1 : start_idx + 1 + actual_len]
@@ -56,7 +57,9 @@ def main():
     # ================= 3. 实例化模型引擎 =================
     model = PANORAMA(
         dt=dt,
-        g_L=config['physics']['g_L'],
+        g=config['physics']['g'], 
+        m=config['physics']['m'], 
+        L=config['physics']['L'],  
         k1=config['physics']['k1'],
         k2=config['physics']['k2'],
         hidden_dim=config['model']['hidden_dim'],
@@ -82,7 +85,7 @@ def main():
         raise FileNotFoundError(f"❌ 找不到训练好的模型权重: {model_path}\n请先运行 03_train.py")
         
     # 加载我们训练好的最优权重
-    model.load_state_dict(torch.load(model_path, map_location=device))
+    model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
     model.eval()
     
     with torch.no_grad():
@@ -96,7 +99,7 @@ def main():
     improvement = (rmse_phys - rmse_pano) / rmse_phys * 100
     
     print(f"\n  评估结果 (RMSE 指标):")
-    print(f"    纯物理理论盲猜 | RMSE: {rmse_phys:.6f} rad")
+    print(f"    纯物理理论预测 | RMSE: {rmse_phys:.6f} rad")
     print(f"    PANORAMA 预测 | RMSE: {rmse_pano:.6f} rad")
     print(f"    算法性能提升率 | +{improvement:.2f}%")
     
@@ -122,7 +125,7 @@ def main():
     os.makedirs(os.path.dirname(plot_save_path), exist_ok=True)
     
     plt.savefig(plot_save_path, bbox_inches='tight')
-    print(f"✅ 绝美的高清对比图已成功保存至: {os.path.abspath(plot_save_path)}")
+    print(f"✅ 高清对比图已成功保存至: {os.path.abspath(plot_save_path)}")
     
     # 如果是在有图形界面的系统里，可以取消注释下面这行直接弹窗看图
     plt.show()

@@ -1,7 +1,7 @@
 # src/models/panorama.py
 import torch
 import torch.nn as nn
-from .physics import PhysicsModel
+from .physics import PhysicsBox
 from .augmentation import AugmentationNetwork
 from src.utils.integrators import rk4_step
 
@@ -9,22 +9,24 @@ class PANORAMA(nn.Module):
     """
     PANORAMA 核心架构：统领物理白盒与神经黑盒，执行时域积分推演。
     """
-    def __init__(self, dt: float, g_L: float, k1: float, k2: float, hidden_dim: int, input_scale: list):
+    def __init__(self, dt: float, g: float, m: float, L: float, k1: float, k2: float, hidden_dim: int, input_scale: list):
         super().__init__()
         self.dt = dt
         
-        # 实例化两大核心算子
-        self.physics = PhysicsModel(g_L, k1, k2)
+        # 1. 实例化纯物理白盒 (传入基础实验参量)
+        self.physics_model = PhysicsBox(g, m, L, k1, k2)
+        
+        # 2. 实例化神经网络黑盒 (刚刚截图中丢失的这行代码补回来了！)
         self.augmentation = AugmentationNetwork(hidden_dim, input_scale)
 
     def dynamics(self, state: torch.Tensor) -> torch.Tensor:
         """
-        计算某一瞬间的混合动力学导数：F = F_p + F_a
+        计算某一瞬间的混合动力学导数: F = F_p + F_a
         """
-        # 1. 获取物理公式推导出的基准变化率
-        f_p = self.physics(state)
+        # 1. 获取物理公式推导出的基准变化率 (注意这里名字改成了 physics_model)
+        f_p = self.physics_model(state)
         
-        # 2. 获取神经网络算出的残差修正力 (只有 1 维，针对角速度)
+        # 2. 获取神经网络算出的残差修正力
         aug = self.augmentation(state)
         
         # 3. 给角位移的导数强行补 0，拼成 (Batch, 2) 的维度

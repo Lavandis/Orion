@@ -17,15 +17,17 @@ camera:
 data:
   raw_path: "data/raw"
   processed_path: "data/processed"
-  active_dataset: "data/processed/哑光data.csv"
+  active_dataset: "data/processed/pendulum_data.csv"
   train_split: 16200          # 训练集截断点 (用于划分 Train/Val)
   test_start: 16200           # 评估阶段测试集起点
   pred_len: 5400              # 测试集向前预测的长度 (60秒 * 90帧)
 
 physics:
-  g_L: 16.3333                # 等效重力参数 (g / L)
-  k1: 0.000098                # 线性机械阻尼系数
-  k2: 0.000009                # 非线性流体力学阻力系数
+  g: 9.8        # 重力加速度
+  L: 0.6        # 摆长 (米)
+  m: 0.033      # 质量 (千克)
+  k1: 0.000098    # 线性阻尼系数
+  k2: 0.000009    # 二次空气阻力系数
 
 model:
   hidden_dim: 32              # 神经网络隐藏层维度 (Optuna 搜索最优值)
