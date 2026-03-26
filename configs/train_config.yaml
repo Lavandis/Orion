@@ -30,19 +30,19 @@ physics:
   k2: 0.000009    # 二次空气阻力系数
 
 model:
-  hidden_dim: 32              # 神经网络隐藏层维度 (Optuna 搜索最优值)
+  hidden_dim: 128              # 神经网络隐藏层维度 (Optuna 搜索最优值)
   input_scale: [10.0, 1.0]    # 输入特征信号放大器 [theta_scale, omega_scale]
 
 train:
-  batch_size: 256             # 批次大小
+  batch_size: 128             # 批次大小
   epochs: 50                  # 总训练轮次
-  lr: 0.0001029891576         # 初始学习率 (Optuna 搜索最优值)
-  weight_decay: 0.00000112466   # 权重衰减惩罚
-  seq_len: 30                 # 时序截取窗口长度 (强制网络学习长时序规律)
+  lr: 0.0002124549849         # 初始学习率 (Optuna 搜索最优值)
+  weight_decay: 0.0002124549849   # 权重衰减惩罚
+  seq_len: 120                 # 时序截取窗口长度 (强制网络学习长时序规律)
 
 multiplier_method:
-  lambda_init: 100000.0         # 动态乘子法初始惩罚系数
-  tau: 10000000.0                # 惩罚力度自适应升级步长
+  lambda_init: 100.0         # 动态乘子法初始惩罚系数
+  tau: 1000.0                # 惩罚力度自适应升级步长
   warmup_epochs: 15           # 热身期轮数 (强制屏蔽 Fa，让物理基线先拟合)
 
 paths:

@@ -7,7 +7,9 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 import pandas as pd
 import os
+import sys
 
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # 从我们写好的 src 模块中导包
 from src.models import PANORAMA
 from src.dataset import ODEDataset

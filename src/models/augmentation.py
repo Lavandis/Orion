@@ -44,4 +44,4 @@ class AugmentationNetwork(nn.Module):
         # 放大输入特征，防止由于输入数值过小，导致在 Tanh 激活函数处于线性区，从而损失非线性表达能力
         scaled_state = state * self.input_scale
         x = self.net(scaled_state)
-        return self.output_layer(x)
+        return self.output_layer(x)*0.001
