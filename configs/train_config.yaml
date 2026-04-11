@@ -24,16 +24,16 @@ physics:
   k2: 0.000009
 
 model:
-  hidden_dim: 128
+  hidden_dim: 64
   input_scale: [10.0, 1.0]
   residual_scale: 1.0
   output_init_std: 0.001
 
 train:
-  batch_size: 256
+  batch_size: 128
   epochs: 50
-  lr: 0.000310941
-  weight_decay: 4.39795e-05
+  lr: 0.002227
+  weight_decay: 0.000111
   seq_len_seconds: 4.0
   theta_loss_weight: 1.0
   omega_loss_weight: 0.5
@@ -45,7 +45,7 @@ tune:
   validation_rollout_seconds: 30.0
   stage1:
     n_trials: 8
-    seq_len_seconds_candidates: [1.0, 1.5, 2.0, 3.0, 4.0]
+    seq_len_seconds_candidates: [1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 6.0]
   stage2:
     n_trials: 20
     lr_range: [1.0e-4, 5.0e-3]
