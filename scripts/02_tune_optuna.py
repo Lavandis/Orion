@@ -13,10 +13,12 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.dataset import ODEDataset
 from src.models import PANORAMA
 from src.utils import (
+    apply_sparse_supervision,
     calculate_mse,
     calculate_rmse_numpy,
     get_theta_omega,
     resolve_seq_len,
+    resolve_supervision_indices,
 )
 
 
@@ -94,13 +96,18 @@ def run_trial(
     validation_rollout_seconds = tune_cfg.get("validation_rollout_seconds")
     validation_rollout_steps = None
     if validation_rollout_seconds is not None:
-        validation_rollout_steps = resolve_seq_len(validation_rollout_seconds, fps)
+        validation_rollout_steps = round(validation_rollout_seconds * fps)
 
     train_loader = DataLoader(
         ODEDataset(train_df, seq_len=seq_len, dt=dt),
         batch_size=batch_size,
         shuffle=True,
         pin_memory=device.type == "cuda",
+    )
+    supervision_indices = resolve_supervision_indices(
+        seq_len,
+        source_fps=fps,
+        supervision_fps=config["train"].get("supervision_downsample_to_fps"),
     )
 
     model = PANORAMA(
@@ -130,6 +137,11 @@ def run_trial(
 
             optimizer.zero_grad()
             pred_traj, _ = model(init_state, seq_len)
+            pred_traj, target_traj = apply_sparse_supervision(
+                pred_traj,
+                target_traj,
+                supervision_indices,
+            )
             theta_loss = calculate_mse(pred_traj[:, :, 0], target_traj[:, :, 0])
             omega_loss = calculate_mse(pred_traj[:, :, 1], target_traj[:, :, 1])
             loss = theta_loss_weight * theta_loss + omega_loss_weight * omega_loss
@@ -159,7 +171,6 @@ def objective_stage1(
         "seq_len_seconds_candidates", [1.0, 1.5, 2.0, 3.0, 4.0]
     )
     seq_len_seconds = trial.suggest_categorical("seq_len_seconds", candidates)
-
     return run_trial(
         trial=trial,
         config=config,

@@ -38,6 +38,7 @@ def main():
 
     print(f"Test start index: {start_idx}")
     print(f"Test rollout length: {actual_len} steps")
+    print(f"Evaluation sampling: full-resolution @ {fps} fps")
 
     theta_0 = theta[start_idx]
     omega_0 = omega[start_idx]

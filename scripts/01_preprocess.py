@@ -27,6 +27,45 @@ def resolve_savgol_window(length: int, window: int) -> int | None:
     return window if window >= 3 else None
 
 
+def extract_time_theta(df: pd.DataFrame, config: dict) -> tuple[np.ndarray, np.ndarray]:
+    time_column = None
+    for candidate in ["Time_Sec", "Time"]:
+        if candidate in df.columns:
+            time_column = candidate
+            break
+    if time_column is None:
+        raise ValueError("Missing time column. Expected one of: Time_Sec, Time")
+
+    angle_column = None
+    for candidate in ["theta_rad", "Angle_rad"]:
+        if candidate in df.columns:
+            angle_column = candidate
+            break
+
+    time_sec = df[time_column].to_numpy(dtype=np.float32)
+    if angle_column is not None:
+        theta_raw = df[angle_column].to_numpy(dtype=np.float32)
+        return time_sec, theta_raw
+
+    if {"Center_X", "Center_Y"}.issubset(df.columns):
+        camera_cfg = config.get("camera", {})
+        pivot_x = camera_cfg.get("pivot_x")
+        pivot_y = camera_cfg.get("pivot_y")
+        if pivot_x is None or pivot_y is None:
+            raise ValueError(
+                "Raw data uses Center_X/Center_Y, but pivot_x/pivot_y are not configured."
+            )
+
+        dx = df["Center_X"].to_numpy(dtype=np.float32) - np.float32(pivot_x)
+        dy = df["Center_Y"].to_numpy(dtype=np.float32) - np.float32(pivot_y)
+        theta_raw = np.arctan2(dx, dy).astype(np.float32)
+        return time_sec, theta_raw
+
+    raise ValueError(
+        "Missing angle information. Expected Angle_rad/theta_rad or Center_X/Center_Y."
+    )
+
+
 def process_data():
     config = load_config()
 
@@ -34,11 +73,10 @@ def process_data():
     processed_dir = config["data"]["processed_path"]
     os.makedirs(processed_dir, exist_ok=True)
 
-    pivot_x = config["camera"]["pivot_x"]
-    pivot_y = config["camera"]["pivot_y"]
-    use_filter = config["camera"]["use_filter"]
-    smooth_window = config["camera"]["smooth_window"]
-    smooth_poly = config["camera"]["smooth_poly"]
+    preprocess_cfg = config.get("preprocess", {})
+    use_filter = preprocess_cfg.get("use_filter", False)
+    smooth_window = preprocess_cfg.get("smooth_window", 11)
+    smooth_poly = preprocess_cfg.get("smooth_poly", 3)
 
     csv_files = glob.glob(os.path.join(raw_dir, "*.csv"))
     if not csv_files:
@@ -52,15 +90,11 @@ def process_data():
         print(f"  -> Processing: {filename}")
 
         df = pd.read_csv(file_path)
-        required_columns = {"Frame", "Time_Sec", "Center_X", "Center_Y"}
-        if not required_columns.issubset(df.columns):
-            print(f"     Skip {filename}: missing required columns {required_columns}")
+        try:
+            time_sec, theta_raw = extract_time_theta(df, config)
+        except ValueError as exc:
+            print(f"     Skip {filename}: {exc}")
             continue
-
-        dx = df["Center_X"].to_numpy(dtype=np.float32) - np.float32(pivot_x)
-        dy = df["Center_Y"].to_numpy(dtype=np.float32) - np.float32(pivot_y)
-        theta_raw = np.arctan2(dx, dy).astype(np.float32)
-        time_sec = df["Time_Sec"].to_numpy(dtype=np.float32)
 
         filter_window = resolve_savgol_window(len(theta_raw), smooth_window)
         if use_filter and filter_window is not None and smooth_poly < filter_window:
@@ -73,11 +107,15 @@ def process_data():
             theta_processed = theta_raw
 
         omega_processed = np.gradient(theta_processed, time_sec).astype(np.float32)
+        if "Frame" in df.columns:
+            frame = df["Frame"].to_numpy()
+        else:
+            frame = np.arange(len(theta_processed), dtype=np.int64)
 
         processed_df = pd.DataFrame(
             {
-                "Frame": df["Frame"],
-                "Time_Sec": df["Time_Sec"],
+                "Frame": frame,
+                "Time_Sec": time_sec,
                 "theta_rad": theta_processed,
                 "omega_rad_s": omega_processed,
             }

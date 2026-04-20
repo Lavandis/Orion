@@ -1,11 +1,9 @@
 system:
-  fps: 30
+  fps: 200
   device: "cuda"
   seed: 42
 
-camera:
-  pivot_x: 640.0
-  pivot_y: -988.0
+preprocess:
   use_filter: false
   smooth_window: 11
   smooth_poly: 3
@@ -13,7 +11,7 @@ camera:
 data:
   raw_path: "data/raw"
   processed_path: "data/processed"
-  active_dataset: "data/processed/30_data.csv"
+  active_dataset: "data/processed/200_data.csv"
   train_ratio: 0.75
 
 physics:
@@ -24,7 +22,7 @@ physics:
   k2: 0.000009
 
 model:
-  hidden_dim: 64
+  hidden_dim: 32
   input_scale: [10.0, 1.0]
   residual_scale: 1.0
   output_init_std: 0.001
@@ -32,9 +30,23 @@ model:
 train:
   batch_size: 128
   epochs: 50
-  lr: 0.002227
-  weight_decay: 0.000111
-  seq_len_seconds: 4.0
+  lr: 0.00018082917515
+  weight_decay: 2.2531e-06
+  seq_len_seconds: 1.0
+  supervision_downsample_to_fps: null
+  curriculum:
+    enabled: false
+    selected_template: "mid_to_long"
+    stage_epoch_ratios: [0.2, 0.3, 0.5]
+    templates:
+      short_to_mid:
+        stage_seq_len_seconds: [0.5, 1.0, 2.0]
+      short_to_long:
+        stage_seq_len_seconds: [0.5, 1.0, 4.0]
+      mid_to_long:
+        stage_seq_len_seconds: [1.0, 2.0, 4.0]
+      long:
+        stage_seq_len_seconds: [4.0, 5.0, 6.0]
   theta_loss_weight: 1.0
   omega_loss_weight: 0.5
   fa_reg_weight: 0.0001
@@ -45,6 +57,7 @@ tune:
   validation_rollout_seconds: 30.0
   stage1:
     n_trials: 8
+    curriculum_template_candidates: ["short_to_mid", "short_to_long", "mid_to_long","long"]
     seq_len_seconds_candidates: [1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 6.0]
   stage2:
     n_trials: 20
@@ -52,6 +65,20 @@ tune:
     weight_decay_range: [1.0e-6, 1.0e-3]
     hidden_dim_choices: [32, 64, 128]
     batch_size_choices: [128, 256, 512]
+
+fine_tune:
+  n_trials: 20
+  search_epochs: 20
+  validation_ratio: 0.2
+  validation_rollout_seconds: 30.0
+  validation_interval_epochs: 1
+  seq_len_seconds_multipliers: [0.75, 1.0, 1.25]
+  lr_multiplier_range: [0.5, 2.0]
+  weight_decay_multiplier_range: [0.33, 3.0]
+  fa_reg_weight_multiplier_range: [0.5, 2.0]
+  hidden_dim_choices: null
+  batch_size_choices: null
+
 
 multiplier_method:
   lambda_init: 100.0

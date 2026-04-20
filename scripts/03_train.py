@@ -4,14 +4,12 @@ import sys
 import pandas as pd
 import torch
 import yaml
-from torch.utils.data import DataLoader
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.dataset import ODEDataset
 from src.models import PANORAMA
 from src.trainer import train_panorama
-from src.utils import resolve_seq_len
+from src.utils import resolve_training_stages
 
 
 def load_config(config_path="configs/train_config.yaml"):
@@ -44,20 +42,33 @@ def main():
     train_size = int(len(full_df) * train_ratio)
     train_df = full_df.iloc[:train_size]
 
-    seq_len_seconds = config["train"]["seq_len_seconds"]
-    seq_len = resolve_seq_len(seq_len_seconds, fps)
-    config["train"]["seq_len"] = seq_len
+    train_stages = resolve_training_stages(config["train"], fps)
+    final_stage = train_stages[-1]
+    config["train"]["seq_len"] = final_stage["seq_len"]
 
-    batch_size = config["train"]["batch_size"]
-    train_dataset = ODEDataset(train_df, seq_len=seq_len, dt=dt)
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        pin_memory=device.type == "cuda",
-    )
+    curriculum_cfg = config["train"].get("curriculum", {})
+    if curriculum_cfg.get("enabled", False):
+        print(
+            f"Curriculum template: {curriculum_cfg['selected_template']} | "
+            f"stages={len(train_stages)}"
+        )
+        for idx, stage in enumerate(train_stages, start=1):
+            print(
+                f"  Stage {idx}: {stage['seq_len_seconds']:.2f}s -> "
+                f"{stage['seq_len']} steps | epochs={stage['epochs']}"
+            )
+    else:
+        print(
+            f"Training horizon: {final_stage['seq_len_seconds']:.2f}s -> "
+            f"{final_stage['seq_len']} steps"
+        )
 
-    print(f"Training horizon: {seq_len_seconds:.2f}s -> {seq_len} steps")
+    supervision_fps = config["train"].get("supervision_downsample_to_fps")
+    if supervision_fps is None:
+        print("Training supervision: full-resolution")
+    else:
+        print(f"Training supervision: sparse @ {supervision_fps} fps")
+
     print("Building PANORAMA model...")
     model = PANORAMA(
         dt=dt,
@@ -75,9 +86,11 @@ def main():
     print("==================================================")
     train_panorama(
         model=model,
-        train_loader=train_loader,
+        train_df=train_df,
+        train_stages=train_stages,
         config=config,
         device=device,
+        dt=dt,
     )
     print("==================================================")
     print("Training finished")
