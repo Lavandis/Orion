@@ -1,50 +1,57 @@
-# =========================
-# PANORAMA .gitignore
-# =========================
-
-# Python 缓存文件 (运行时自动生成，不用提交)
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
 
-# 虚拟环境 (如果你用了 venv 或 conda)
-venv/
-env/
+# Virtual environments
 .env
+.venv/
+env/
+venv/
 
-# 数据文件 (绝对不能把海量实验数据提交到 Git)
+# Tooling caches
+.idea/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.vscode/
+.DS_Store
+.neoconf.json
+
+# Large raw/processed data
 *.csv
 data/raw/*
 data/processed/*
-# (保留空目录结构，不保留里面的文件)
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 
-# 模型权重与检查点 (体积太大，且每次训练都在变)
+# Model checkpoints
 checkpoints/
-*.pth
 *.pt
+*.pth
 
-# 运行日志与生成的图表
-logs/
-*.png
+# Generated images and logs
 *.jpg
 *.log
+*.png
+logs/
 
-# 操作系统与 IDE 缓存
-.DS_Store
-.vscode/
-.idea/
-.neoconf.json
+# Experiment artifacts
+artifacts/*
+!artifacts/.gitkeep
 
-# 资产与输出文件 (Assets)
+# Assets outputs
 assets/*
-assets/models/*.pth
-assets/plots/*.png
-assets/plots/*.pdf
-
-# 保留空目录结构
+!assets/models/
+!assets/plots/
+assets/models/*
+assets/plots/*
 !assets/models/.gitkeep
 !assets/plots/.gitkeep
+
+# Local experiment databases
+*.db
+*.sqlite
+*.sqlite3
 
 /log.md

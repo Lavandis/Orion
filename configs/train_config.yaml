@@ -1,49 +1,89 @@
-# ==========================================
-# PANORAMA 混合建模全局配置文件
-# ==========================================
-
 system:
-  fps: 90                     # 摄像头采样帧率 (后续代码通过 1/fps 计算 dt)
-  device: "cuda"              # 默认运行设备 ("cuda" 或 "cpu")
-  seed: 42                    # 全局随机种子，确保实验完全可复现
+  fps: 200
+  device: "cuda"
+  seed: 42
 
-camera:
-  pivot_x: 640.0   # 悬挂点的 X 像素坐标 (请根据实际视频修改)
-  pivot_y: -988.0    # 悬挂点的 Y 像素坐标 (请根据实际视频修改)
-  use_filter: False
-  smooth_window: 11 # Savitzky-Golay 滤波器的窗口大小 (平滑 YOLO 的抖动)
-  smooth_poly: 3    # 滤波器的多项式阶数
+preprocess:
+  use_filter: false
+  smooth_window: 11
+  smooth_poly: 3
 
 data:
   raw_path: "data/raw"
   processed_path: "data/processed"
-  active_dataset: "data/processed/pendulum_data.csv"
-  train_split: 16200          # 训练集截断点 (用于划分 Train/Val)
-  test_start: 16200           # 评估阶段测试集起点
-  pred_len: 5400              # 测试集向前预测的长度 (60秒 * 90帧)
+  active_dataset: "data/processed/200_data.csv"
+  train_ratio: 0.75
 
 physics:
-  g: 9.8        # 重力加速度
-  L: 0.6        # 摆长 (米)
-  m: 0.033      # 质量 (千克)
-  k1: 0.000098    # 线性阻尼系数
-  k2: 0.000009    # 二次空气阻力系数
+  g: 9.8
+  L: 0.6
+  m: 0.033
+  k1: 0.000098
+  k2: 0.000009
 
 model:
-  hidden_dim: 128              # 神经网络隐藏层维度 (Optuna 搜索最优值)
-  input_scale: [10.0, 1.0]    # 输入特征信号放大器 [theta_scale, omega_scale]
+  hidden_dim: 32
+  input_scale: [10.0, 1.0]
+  residual_scale: 1.0
+  output_init_std: 0.001
 
 train:
-  batch_size: 128             # 批次大小
-  epochs: 50                  # 总训练轮次
-  lr: 0.0002124549849         # 初始学习率 (Optuna 搜索最优值)
-  weight_decay: 0.0002124549849   # 权重衰减惩罚
-  seq_len: 120                 # 时序截取窗口长度 (强制网络学习长时序规律)
+  batch_size: 128
+  epochs: 50
+  lr: 0.00018082917515
+  weight_decay: 2.2531e-06
+  seq_len_seconds: 1.0
+  supervision_downsample_to_fps: null
+  curriculum:
+    enabled: false
+    selected_template: "mid_to_long"
+    stage_epoch_ratios: [0.2, 0.3, 0.5]
+    templates:
+      short_to_mid:
+        stage_seq_len_seconds: [0.5, 1.0, 2.0]
+      short_to_long:
+        stage_seq_len_seconds: [0.5, 1.0, 4.0]
+      mid_to_long:
+        stage_seq_len_seconds: [1.0, 2.0, 4.0]
+      long:
+        stage_seq_len_seconds: [4.0, 5.0, 6.0]
+  theta_loss_weight: 1.0
+  omega_loss_weight: 0.5
+  fa_reg_weight: 0.0001
+
+tune:
+  search_epochs: 20
+  validation_ratio: 0.2
+  validation_rollout_seconds: 30.0
+  stage1:
+    n_trials: 8
+    curriculum_template_candidates: ["short_to_mid", "short_to_long", "mid_to_long","long"]
+    seq_len_seconds_candidates: [1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 6.0]
+  stage2:
+    n_trials: 20
+    lr_range: [1.0e-4, 5.0e-3]
+    weight_decay_range: [1.0e-6, 1.0e-3]
+    hidden_dim_choices: [32, 64, 128]
+    batch_size_choices: [128, 256, 512]
+
+fine_tune:
+  n_trials: 20
+  search_epochs: 20
+  validation_ratio: 0.2
+  validation_rollout_seconds: 30.0
+  validation_interval_epochs: 1
+  seq_len_seconds_multipliers: [0.75, 1.0, 1.25]
+  lr_multiplier_range: [0.5, 2.0]
+  weight_decay_multiplier_range: [0.33, 3.0]
+  fa_reg_weight_multiplier_range: [0.5, 2.0]
+  hidden_dim_choices: null
+  batch_size_choices: null
+
 
 multiplier_method:
-  lambda_init: 100.0         # 动态乘子法初始惩罚系数
-  tau: 1000.0                # 惩罚力度自适应升级步长
-  warmup_epochs: 15           # 热身期轮数 (强制屏蔽 Fa，让物理基线先拟合)
+  lambda_init: 100.0
+  tau: 1000.0
+  warmup_epochs: 15
 
 paths:
   model_save: "assets/models/panorama_model.pth"

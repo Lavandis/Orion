@@ -1,89 +1,100 @@
-# scripts/03_train.py
 import os
 import sys
-import yaml
-import torch
-import pandas as pd
-from torch.utils.data import DataLoader
 
-# 核心修复：将项目根目录加入系统路径，完美兼容 VSCode 的右上角运行按钮
+import pandas as pd
+import torch
+import yaml
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# 导入我们一手打造的模块化组件
 from src.models import PANORAMA
-from src.dataset import ODEDataset
 from src.trainer import train_panorama
+from src.utils import resolve_training_stages
+
 
 def load_config(config_path="configs/train_config.yaml"):
-    """加载全局 YAML 配置文件"""
     with open(config_path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
-def main():
-    # 1. 读取总控配置
-    config = load_config()
-    device = torch.device(config['system']['device'])
-    fps = config['system']['fps']
-    dt = 1.0 / fps
-    
-    # 为了保证实验完全可复现，固定全局随机种子
-    torch.manual_seed(config['system']['seed'])
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(config['system']['seed'])
-        
-    print(f"⚙️ 系统初始化完成 | 设备: {device} | 采样率: {fps} FPS")
 
-    # 2. 数据流装配 (Data Pipeline)
-    data_path = config['data']['active_dataset']
+def main():
+    config = load_config()
+    device = torch.device(config["system"]["device"])
+    fps = config["system"]["fps"]
+    dt = 1.0 / fps
+
+    torch.manual_seed(config["system"]["seed"])
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(config["system"]["seed"])
+
+    print(f"System initialized | device={device} | fps={fps}")
+
+    data_path = config["data"]["active_dataset"]
     if not os.path.exists(data_path):
-        raise FileNotFoundError(f"❌ 找不到预处理数据文件: {data_path}\n请先运行 01_preprocess.py")
-        
-    print(f"📂 正在加载数据集: {data_path}")
+        raise FileNotFoundError(
+            f"Cannot find processed dataset: {data_path}\nRun scripts/01_preprocess.py first."
+        )
+
+    print(f"Loading dataset: {data_path}")
     full_df = pd.read_csv(data_path)
-    
-    # 按照配置截断训练集 (例如前 16200 帧)
-    train_split = config['data']['train_split']
-    train_df = full_df.iloc[:train_split]
-    
-    # 实例化数据集与 DataLoader
-    seq_len = config['train']['seq_len']
-    batch_size = config['train']['batch_size']
-    train_dataset = ODEDataset(train_df, seq_len=seq_len, dt=dt)
-    
-    # pin_memory=True 可以加速 CPU 到 GPU 的数据拷贝，是极佳的工程习惯
-    train_loader = DataLoader(
-        train_dataset, 
-        batch_size=batch_size, 
-        shuffle=True, 
-        pin_memory=True if device.type == 'cuda' else False
-    )
-    
-    # 3. 核心引擎实例化 (Model Instantiation)
-    print("🧠 正在构建 PANORAMA 混合推理引擎...")
+
+    train_ratio = config["data"].get("train_ratio", 0.75)
+    train_size = int(len(full_df) * train_ratio)
+    train_df = full_df.iloc[:train_size]
+
+    train_stages = resolve_training_stages(config["train"], fps)
+    final_stage = train_stages[-1]
+    config["train"]["seq_len"] = final_stage["seq_len"]
+
+    curriculum_cfg = config["train"].get("curriculum", {})
+    if curriculum_cfg.get("enabled", False):
+        print(
+            f"Curriculum template: {curriculum_cfg['selected_template']} | "
+            f"stages={len(train_stages)}"
+        )
+        for idx, stage in enumerate(train_stages, start=1):
+            print(
+                f"  Stage {idx}: {stage['seq_len_seconds']:.2f}s -> "
+                f"{stage['seq_len']} steps | epochs={stage['epochs']}"
+            )
+    else:
+        print(
+            f"Training horizon: {final_stage['seq_len_seconds']:.2f}s -> "
+            f"{final_stage['seq_len']} steps"
+        )
+
+    supervision_fps = config["train"].get("supervision_downsample_to_fps")
+    if supervision_fps is None:
+        print("Training supervision: full-resolution")
+    else:
+        print(f"Training supervision: sparse @ {supervision_fps} fps")
+
+    print("Building PANORAMA model...")
     model = PANORAMA(
         dt=dt,
-        g=config['physics']['g'],
-        m=config['physics']['m'],
-        L=config['physics']['L'],      
-        k1=config['physics']['k1'],
-        k2=config['physics']['k2'],
-        hidden_dim=config['model']['hidden_dim'],
-        input_scale=config['model']['input_scale']
+        g=config["physics"]["g"],
+        m=config["physics"]["m"],
+        L=config["physics"]["L"],
+        k1=config["physics"]["k1"],
+        k2=config["physics"]["k2"],
+        hidden_dim=config["model"]["hidden_dim"],
+        input_scale=config["model"]["input_scale"],
+        residual_scale=config["model"].get("residual_scale", 1.0),
+        output_init_std=config["model"].get("output_init_std", 1e-3),
     ).to(device)
-    
-    # 开启 JIT 编译加速 (如果你的算子支持，这会让运算速度起飞)
-    # model = torch.jit.script(model)
-    
-    # 4. 启动训练循环 (依赖注入，将控制权交给 trainer 模块)
+
     print("==================================================")
-    trained_model = train_panorama(
+    train_panorama(
         model=model,
-        train_loader=train_loader,
+        train_df=train_df,
+        train_stages=train_stages,
         config=config,
-        device=device
+        device=device,
+        dt=dt,
     )
     print("==================================================")
-    print("🎉 训练主流程全部执行完毕！")
+    print("Training finished")
+
 
 if __name__ == "__main__":
     main()
